@@ -1,1 +1,6 @@
-yfinance 
+Flask==2.3.2
+numpy==1.24.4
+pandas==2.0.3
+scipy==1.10.1
+yfinance==0.2.36
+Jinja2==3.1.2
