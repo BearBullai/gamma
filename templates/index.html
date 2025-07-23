@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Futuristic Option Pricing Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css?family=Orbitron:700|Exo+2:700&display=swap" rel="stylesheet">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="logo">🟧</div>
+        <nav>
+            <a href="#" class="active" id="nav-calc" title="Calculator">🧮</a>
+            <a href="#" id="nav-results" title="Results">📊</a>
+            <a href="#" id="nav-charts" title="Charts">📈</a>
+            <a href="#" id="nav-3d" title="3D Visualization">🌐</a>
+            <a href="#" id="nav-info" title="Info">ℹ️</a>
+        </nav>
+    </aside>
+
+    <main class="main-content">
+        <!-- Calculator Section -->
+        <section id="calculator-section" class="glass-card active-section">
+            <h1>Variance Gamma Option Pricing</h1>
+            <form id="vg-form">
+                <div class="input-group">
+                    <label>Stock Price</label>
+                    <input type="number" name="S" value="100" required style="background:#fff;color:#FF6C00;">
+                </div>
+                <div class="input-group">
+                    <label>Strike Price</label>
+                    <input type="number" name="K" value="100" required style="background:#fff;color:#FF6C00;">
+                </div>
+                <div class="input-group">
+                    <label>Time to Expiration</label>
+                    <input type="number" name="T" value="1" required style="background:#fff;color:#FF6C00;">
+                </div>
+                <div class="input-group">
+                    <label>Volatility</label>
+                    <input type="number" name="sigma" value="0.2" required style="background:#fff;color:#FF6C00;">
+                </div>
+                <div class="input-group">
+                    <label>Risk-Free Rate</label>
+                    <input type="number" name="r" value="0.05" required style="background:#fff;color:#FF6C00;">
+                </div>
+                <div class="input-group">
+                    <label>Skew (θ)</label>
+                    <input type="number" name="theta" value="0" required style="background:#fff;color:#FF6C00;">
+                </div>
+                <div class="input-group">
+                    <label>VG Parameter (ν)</label>
+                    <input type="number" name="nu" value="0.2" required style="background:#fff;color:#FF6C00;">
+                </div>
+                <div class="input-group">
+                    <label>Benchmark: Nifty Backtest</label>
+                    <select id="nifty-toggle" style="background:#fff;color:#FF6C00;">
+                        <option value="off">Off</option>
+                        <option value="on">On</option>
+                    </select>
+                </div>
+                <div class="input-group" id="nifty-date-group" style="display:none;">
+                    <label>Date Range</label>
+                    <input type="date" id="nifty-start" style="background:#fff;color:#FF6C00;">
+                    <input type="date" id="nifty-end" style="background:#fff;color:#FF6C00;">
+                    <button type="button" id="fetch-nifty" class="neon-btn">Fetch Nifty Data</button>
+                    <span id="nifty-loading" style="display:none;color:#FF6C00;">Loading...</span>
+                </div>
+                <button type="submit" class="neon-btn">Calculate</button>
+            </form>
+            <hr style="margin:32px 0;border:1.5px solid #FF6C00;">
+            <form id="csv-upload-form" enctype="multipart/form-data" onsubmit="uploadCsv(event)" style="margin-top:24px;">
+                <label style="color:#FF6C00;font-weight:bold;">Upload Option Data CSV</label>
+                <input type="file" name="file" id="csvFile" accept=".csv" required style="background:#fff;color:#FF6C00;">
+                <div class="input-group">
+                    <label for="csvUnderlyingS">Underlying Price (S) for CSV calculations</label>
+                    <input type="number" id="csvUnderlyingS" value="20000" step="0.01" required style="background:#fff;color:#FF6C00;">
+                    <p class="text-xs" style="color: rgba(0, 255, 194, 0.6);">This value will be used as the underlying asset price for all rows in the CSV (e.g., Nifty spot price).</p>
+                </div>
+                <button type="submit" class="neon-btn" style="margin-top:12px;">Upload & Analyze CSV</button>
+            </form>
+            <div id="csvStatus" class="glass-card mt-6 hidden"></div>
+            <div id="csv-download-link" style="margin-top:18px;"></div>
+            <div id="csv-results-table" class="mt-6 hidden">
+                <h3 class="results-title">CSV Calculation Results</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>DATE</th>
+                            <th>STRIKE PRICE</th>
+                            <th>SETTLE PRICE</th>
+                            <th>VG Call Price</th>
+                            <th>VG Delta</th>
+                            <th>VG Gamma</th>
+                            <th>VG Vega</th>
+                            <th>VG Theta</th>
+                            <th>VG Rho</th>
+                            <th>BS Call Price</th>
+                            <th>BS Delta</th>
+                            <th>BS Gamma</th>
+                            <th>BS Vega</th>
+                            <th>BS Theta</th>
+                            <th>BS Rho</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Results will be inserted here -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Results Section -->
+        <section id="results-section" class="glass-card" style="display:none;">
+            <div class="results-flex">
+                <div class="results-group glass-card">
+                    <h2 class="results-title neon">Variance Gamma Model</h2>
+                    <div id="vg-metrics" class="metrics-grid"></div>
+                </div>
+                <div class="results-group glass-card">
+                    <h2 class="results-title neon">Black-Scholes Model</h2>
+                    <div id="bs-metrics" class="metrics-grid"></div>
+                </div>
+            </div>
+
+            <div id="nifty-benchmark-section" class="glass-card" style="display:none;margin-top:24px;">
+                <h2 class="results-title neon">Nifty Benchmark (Custom Range)</h2>
+                <div id="nifty-chart" style="height:400px;"></div>
+            </div>
+        </section>
+
+        <!-- Charts -->
+        <section id="chart-section" class="glass-card">
+            <h2>Charts</h2>
+            <div id="chart"></div>
+            <button class="neon-btn" id="download-chart">Download Chart</button>
+        </section>
+
+        <!-- 3D Section -->
+        <section id="visual-section" class="glass-card">
+            <h2>3D Visualization</h2>
+            <div id="plot3d_call"></div>
+        </section>
+
+        <!-- Info Section -->
+        <section id="info-section" class="glass-card">
+            <h2>About</h2>
+            <p>This tool uses the Variance Gamma and Black-Scholes models to price options and visualize Greeks. Built with a neon UI for the best user experience.</p>
+        </section>
+    </main>
+
+    <div id="snackbar"></div>
+
+    <script>
+        // Toggle date group visibility
+        document.getElementById("nifty-toggle").addEventListener("change", function () {
+            const isOn = this.value === "on";
+            document.getElementById("nifty-date-group").style.display = isOn ? "block" : "none";
+            document.getElementById("nifty-benchmark-section").style.display = isOn ? "block" : "none";
+        });
+
+        // Fetch Nifty data
+        document.getElementById("fetch-nifty").addEventListener("click", function () {
+            const start = document.getElementById("nifty-start").value;
+            const end = document.getElementById("nifty-end").value;
+            const loading = document.getElementById("nifty-loading");
+
+            if (!start || !end) {
+                alert("Please select both start and end dates.");
+                return;
+            }
+
+            loading.style.display = "inline";
+
+            fetch(`/nifty?start=${start}&end=${end}`)
+                .then(response => {
+                    loading.style.display = "none";
+                    if (!response.ok) throw new Error("Error fetching data");
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.error) {
+                        alert(data.error);
+                        return;
+                    }
+                    const trace = {
+                        x: data.dates,
+                        y: data.closes,
+                        type: 'scatter',
+                        mode: 'lines+markers',
+                        name: 'NIFTY',
+                        line: { color: '#FF6C00' }
+                    };
+                    const layout = {
+                        margin: { t: 40 },
+                        title: 'NIFTY Index - Close Price',
+                        plot_bgcolor: '#111',
+                        paper_bgcolor: '#111',
+                        font: { color: '#FF6C00' }
+                    };
+                    Plotly.newPlot('nifty-chart', [trace], layout);
+                })
+                .catch(error => {
+                    loading.style.display = "none";
+                    console.error(error);
+                    alert("Failed to load Nifty data.");
+                });
+        });
+    </script>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
