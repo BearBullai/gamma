@@ -207,4 +207,5 @@ def upload_csv():
     return jsonify({'results': results, 'row_errors': len(row_errors), 'total_rows': len(df), 'row_error_details': row_errors})
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0',debug=True)
+
